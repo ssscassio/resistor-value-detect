@@ -11,7 +11,7 @@ using namespace std;
 
     Mat imgOriginal;
 
-    imgOriginal = imread( "sixbandresistor.png", 1 );
+    imgOriginal = imread( "resistor.jpg", 1 );
 
     namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"
 
@@ -44,6 +44,7 @@ using namespace std;
        Mat imgHSV;
        cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
 
+       imshow("HSV", imgHSV);
        Mat imgThresholded;
        inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded);
 
