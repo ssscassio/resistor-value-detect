@@ -6,12 +6,14 @@
 #include <algorithm>    // std::sort
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/photo/photo.hpp>
 
 using namespace cv;
 using namespace std;
 
 
 const int MIN_OBJECT_AREA = 100000;
+const int MAX_OBJECT_AREA = 10000000;
 
 struct rangeHSV{
     int iLowH;  // menor hue
@@ -74,12 +76,12 @@ struct rangeHSV  getColorRange(string color){
             break;
         case brown:
             // Defining brown color 
-            HsvLowAndHigh.iLowH  = 0;
-            HsvLowAndHigh.iHighH = 14;
-            HsvLowAndHigh.iLowS  = 44;
-            HsvLowAndHigh.iHighS = 255;
+            HsvLowAndHigh.iLowH  = 7;
+            HsvLowAndHigh.iHighH = 68;
+            HsvLowAndHigh.iLowS  = 0;
+            HsvLowAndHigh.iHighS = 253;
             HsvLowAndHigh.iLowV  = 0;
-            HsvLowAndHigh.iHighV = 255;
+            HsvLowAndHigh.iHighV = 187;
             break;
         case red:
             // Defining red color
@@ -92,11 +94,11 @@ struct rangeHSV  getColorRange(string color){
             break;
         case orange:
             // Defining orange color
-            HsvLowAndHigh.iLowH  = 0;
-            HsvLowAndHigh.iHighH = 24;
-            HsvLowAndHigh.iLowS  = 144;
+            HsvLowAndHigh.iLowH  = 7;
+            HsvLowAndHigh.iHighH = 85;
+            HsvLowAndHigh.iLowS  = 216;
             HsvLowAndHigh.iHighS = 255;
-            HsvLowAndHigh.iLowV  = 207;
+            HsvLowAndHigh.iLowV  = 151;
             HsvLowAndHigh.iHighV = 255;
             break;
         case yellow:
@@ -211,7 +213,7 @@ struct colorFounded getXYColorPosition (string color, Mat imgHSV) {
     double dArea = oMoments.m00;
     
     struct colorFounded found;
-    if (dArea > MIN_OBJECT_AREA)
+    if (dArea > MIN_OBJECT_AREA && dArea < MAX_OBJECT_AREA)
         found = {.posX = dM10 / dArea,.posY = dM01 / dArea,.area = dArea,.color = color};
         return found;
     return found = {.posX = 99999,.posY = 99999,.area = 99999,.color = color};
@@ -322,17 +324,28 @@ string getResistorPrecision(vector<colorFounded> bandFounded) {
 int main( int argc, char** argv ){
     //Declarando Vetor com cores validas para resistor de seis faixas
     const char *colors[] = {
+        "purple",
+        "black",
+        "brown",
         "red",
         "orange",
+        "yellow",
+        "green",
         "blue",
-        "golden"
+        "gray",
+        "white",
+        "golden",
+        "silver",
     };
 
-    vector<std::string> sixBandColors(colors, colors + 4);
+    vector<std::string> sixBandColors(colors, colors + 12);
 
     //Carregando Imagem
     Mat imgOriginal;
     imgOriginal = imread( "resistor2.jpg", 1 );
+
+    //Denoising Image
+    fastNlMeansDenoisingColored( imgOriginal, imgOriginal, 3, 3, 7, 21 );
 
     //Criando uma imagem preta do tamanho da imagem original
     Mat points = Mat::zeros( imgOriginal.size(), CV_8UC3 );
@@ -345,20 +358,25 @@ int main( int argc, char** argv ){
         string color = "none";
 
         //Encontrando os pontos centrais das cores do resistor
+        colorFounded found;
         for (int i = 0; i< sixBandColors.size(); i++){
             color = sixBandColors[i];
-            if(getXYColorPosition(color,imgHSV).posX != 99999 && getXYColorPosition(color,imgHSV).area >10000)
-                bandFounded.push_back(getXYColorPosition(color,imgHSV));
+            found = getXYColorPosition(color,imgHSV);
+            if(found.area > MIN_OBJECT_AREA){
+                bandFounded.push_back(found);
+            }
         }
 
         cout << bandFounded.size() << endl;
         //Ordenando Quanto a posição X dos pontos encontrados
         sort(bandFounded.begin(), bandFounded.end(), orderByXPos);  
 
-        colorFounded found;
         for (int i = 0; i< bandFounded.size(); i++){
             found = bandFounded[i];
-            circle(points, Point(found.posX, found.posY), 3,  Scalar(0,255,0), 2);
+            if(found.area > MIN_OBJECT_AREA){
+                cout << found.color << "  " << found.area << endl;
+                circle(points, Point(found.posX, found.posY), 3,  Scalar(0,255,0), 2);
+            }
         }
 
         imgOriginal = imgOriginal + points;

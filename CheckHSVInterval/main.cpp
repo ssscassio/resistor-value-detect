@@ -11,17 +11,17 @@ using namespace std;
 
     Mat imgOriginal;
 
-    imgOriginal = imread( "resistor2.jpg", 1 );
+    imgOriginal = imread( "sixbandresistor.png", 1 );
 
     namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"
 
-    int iLowH = 170;
-    int iHighH = 179;
+    int iLowH = 0;
+    int iHighH = 130;
 
-    int iLowS = 150;
+    int iLowS = 220;
     int iHighS = 255;
 
-    int iLowV = 60;
+    int iLowV = 0;
     int iHighV = 255;
 
     //Create trackbars in "Control" window
