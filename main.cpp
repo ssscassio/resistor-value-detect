@@ -1,6 +1,9 @@
 #include <iostream>
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
+#include <math.h>       /* pow */
+#include <sstream>
+#include <string>
+#include <vector>
+#include <algorithm>    // std::sort
 
 using namespace cv;
 using namespace std;
@@ -19,7 +22,7 @@ struct rangeHSV{
 struct colorFounded {
     double posX;
     double posY;
-    double area,
+    double area;
     string color;
 };
 
@@ -165,7 +168,7 @@ struct rangeHSV  getColorRange(string color){
             HsvLowAndHigh.iLowV  = 44;
             HsvLowAndHigh.iHighV = 206;
     }
-    return HsvHighAndLowValues;
+    return HsvLowAndHigh;
 };
 
 
@@ -205,15 +208,15 @@ struct colorFounded getXYColorPosition (string color, Mat imgHSV) {
     double dArea = oMoments.m00;
     
     struct colorFounded found;
-    found = {dM10 / dArea, dM01 / dArea, dArea, color};
     if (dArea > MIN_OBJECT_AREA)
+        found = {.posX = dM10 / dArea,.posY = dM01 / dArea,.area = dArea,.color = color};
         return found;
-    return false;
+    return found = {.posX = 99999,.posY = 99999,.area = 99999,.color = color};
 }
 
-bool orderByXPos(const Data& x, const Data& y) { return x.posX < y.posX; }
+bool orderByXPos(const colorFounded& x, const colorFounded& y) { return x.posX < y.posX; }
 
-bool orderByYPos(const Data& x, const Data& y) { return x.posY < y.posY; }
+bool orderByYPos(const colorFounded& x, const colorFounded& y) { return x.posY < y.posY; }
 
 double getBandValue(double lastValue, int index, string color, int size){
     
@@ -224,8 +227,8 @@ double getBandValue(double lastValue, int index, string color, int size){
             case silver:
                 return lastValue;
             default:
-                if(size == 3 || size == 4) return lastValue + hashit(color)*10;
-                else return lastValue + hashit(color)*100;
+                if(size == 3 || size == 4) return lastValue + (int) hashit(color)*10;
+                else return lastValue + (int) hashit(color)*100;
                 break;
         }
     } else if (index == 1){
@@ -235,8 +238,8 @@ double getBandValue(double lastValue, int index, string color, int size){
             case silver:
                 return  lastValue;
             default:
-                if(size == 3 || size == 4) return lastValue + hashit(color);
-                else return lastValue + hashit(color)*10;
+                if(size == 3 || size == 4) return lastValue + (int)hashit(color);
+                else return lastValue + (int) hashit(color)*10;
                 break;
         }
     } else if (index == 2){
@@ -248,8 +251,8 @@ double getBandValue(double lastValue, int index, string color, int size){
                 if(size == 3 || size == 4) return lastValue * 0.01;
                 else return lastValue;
             default:
-                if(size == 3 || size == 4) return lastValue * pow(10,hashit(color));
-                else return lastValue + hashit(color);
+                if(size == 3 || size == 4) return lastValue * pow(10,(int)hashit(color));
+                else return lastValue + (int) hashit(color);
                 break;
         }
     } else if (index == 3){
@@ -261,23 +264,22 @@ double getBandValue(double lastValue, int index, string color, int size){
                 case silver:
                     return lastValue * 0.01;
                 default:
-                    else return lastValue * pow(10,hashit(color);
+                    return lastValue * pow(10,(int) hashit(color));
                     break;
             }
         } 
     }
-}
+};
 
 //Efetua somatório do valor do resistor baseado no indice do vetor e a cor em questão
 double getResistorValue(vector<colorFounded> bandFounded) {
     double value = 0;
-    for (int index = 0, size = bandFounded.size(); index < size; ++index)
-            bandFounded[index].color;
-            value = getBandValue(value, index, color, size );
+    for (int index = 0, size = bandFounded.size(); index < size; ++index) {
+            value = getBandValue(value, index, bandFounded[index].color, size );
 	}
 
     return value;
-}
+};
 
 string getBandPrecision(string color ,  int resistorType) {
     switch(resistorType) {
@@ -338,7 +340,7 @@ int main( int argc, char** argv ){
     imgOriginal = imread( "resistor.jpg", 1 );
 
     //Criando uma imagem preta do tamanho da imagem original
-    Mat points = Mat::zeros( imgOriginal.size(), CV_8UC3 );;
+    Mat points = Mat::zeros( imgOriginal.size(), CV_8UC3 );
     
     //Convertendo Imagem de BGR para HSV
     Mat imgHSV;
@@ -346,12 +348,14 @@ int main( int argc, char** argv ){
 
     //Encontrando os pontos centrais das cores do resistor
     for (string& color : sixBandColors){
-        bandFounded.push_back(getXYColorPosition(color,imgHSV));
+        
+        if(getXYColorPosition(color,imgHSV).posX != 99999)
+            bandFounded.push_back(getXYColorPosition(color,imgHSV));
 	}
 
     //Ordenando Quanto a posição X dos pontos encontrados
     sort(bandFounded.begin(), bandFounded.end(), orderByXPos);  
 
-    cout << "Resistor Value" << getResistorValue(bandFounded) << " " << getResistorPrecision(bandFounded) << endln;
+    cout << "Resistor Value" << getResistorValue(bandFounded) << " " << getResistorPrecision(bandFounded) << endl;
 
 }
