@@ -11,7 +11,7 @@ using namespace std;
 
     Mat imgOriginal;
 
-    imgOriginal = imread( "resistor.jpg", 1 );
+    imgOriginal = imread( "resistor2.jpg", 1 );
 
     namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"
 

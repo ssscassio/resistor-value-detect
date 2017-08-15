@@ -4,11 +4,14 @@
 #include <string>
 #include <vector>
 #include <algorithm>    // std::sort
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
 using namespace cv;
 using namespace std;
 
-const int MIN_OBJECT_AREA = 10000;
+
+const int MIN_OBJECT_AREA = 100000;
 
 struct rangeHSV{
     int iLowH;  // menor hue
@@ -72,11 +75,11 @@ struct rangeHSV  getColorRange(string color){
         case brown:
             // Defining brown color 
             HsvLowAndHigh.iLowH  = 0;
-            HsvLowAndHigh.iHighH = 85;
-            HsvLowAndHigh.iLowS  = 180;
-            HsvLowAndHigh.iHighS = 249;
-            HsvLowAndHigh.iLowV  = 120;
-            HsvLowAndHigh.iHighV = 211;
+            HsvLowAndHigh.iHighH = 14;
+            HsvLowAndHigh.iLowS  = 44;
+            HsvLowAndHigh.iHighS = 255;
+            HsvLowAndHigh.iLowV  = 0;
+            HsvLowAndHigh.iHighV = 255;
             break;
         case red:
             // Defining red color
@@ -89,11 +92,11 @@ struct rangeHSV  getColorRange(string color){
             break;
         case orange:
             // Defining orange color
-            HsvLowAndHigh.iLowH  = 4;
-            HsvLowAndHigh.iHighH = 22;
-            HsvLowAndHigh.iLowS  = 0;
+            HsvLowAndHigh.iLowH  = 0;
+            HsvLowAndHigh.iHighH = 24;
+            HsvLowAndHigh.iLowS  = 144;
             HsvLowAndHigh.iHighS = 255;
-            HsvLowAndHigh.iLowV  = 167;
+            HsvLowAndHigh.iLowV  = 207;
             HsvLowAndHigh.iHighV = 255;
             break;
         case yellow:
@@ -144,10 +147,10 @@ struct rangeHSV  getColorRange(string color){
         case white:
             // Defining white color
             HsvLowAndHigh.iLowH  = 0;
-            HsvLowAndHigh.iHighH = 142;
+            HsvLowAndHigh.iHighH = 85;
             HsvLowAndHigh.iLowS  = 0;
-            HsvLowAndHigh.iHighS = 88;
-            HsvLowAndHigh.iLowV  = 231;
+            HsvLowAndHigh.iHighS = 43;
+            HsvLowAndHigh.iLowV  = 144;
             HsvLowAndHigh.iHighV = 255;
             break;
         case golden:
@@ -173,7 +176,7 @@ struct rangeHSV  getColorRange(string color){
 
 
 Scalar getScalar(string color, int HIGH){
-    struct rangeHSV rangeColor = getColorRange(string color);
+    struct rangeHSV rangeColor = getColorRange(color);
 
     if(HIGH){
         return Scalar(rangeColor.iHighH,rangeColor.iHighS,rangeColor.iHighV);        
@@ -199,7 +202,7 @@ struct colorFounded getXYColorPosition (string color, Mat imgHSV) {
     inRange(imgHSV, getScalar(color, 0) , getScalar(color, 1) , imgThresholded);
 
     //Aplicando Dilatação e Erosão na imagem
-    morphOps(threshold);
+    morphOps(imgThresholded);
 
     Moments oMoments = moments(imgThresholded);
 
@@ -318,44 +321,54 @@ string getResistorPrecision(vector<colorFounded> bandFounded) {
 
 int main( int argc, char** argv ){
     //Declarando Vetor com cores validas para resistor de seis faixas
-    vector<std::string> sixBandColors = {
-        "purple",
-        "black",
-        "brown",
+    const char *colors[] = {
         "red",
         "orange",
-        "yellow",
-        "green",
         "blue",
-        "gray",
-        "white",
-        "golden",
-        "silver",
+        "golden"
     };
 
-    vector<colorFounded> bandFounded;
+    vector<std::string> sixBandColors(colors, colors + 4);
 
     //Carregando Imagem
     Mat imgOriginal;
-    imgOriginal = imread( "resistor.jpg", 1 );
+    imgOriginal = imread( "resistor2.jpg", 1 );
 
     //Criando uma imagem preta do tamanho da imagem original
     Mat points = Mat::zeros( imgOriginal.size(), CV_8UC3 );
-    
-    //Convertendo Imagem de BGR para HSV
-    Mat imgHSV;
-    cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV);
+    while(true) {
+        vector<colorFounded> bandFounded;
 
-    //Encontrando os pontos centrais das cores do resistor
-    for (string& color : sixBandColors){
-        
-        if(getXYColorPosition(color,imgHSV).posX != 99999)
-            bandFounded.push_back(getXYColorPosition(color,imgHSV));
-	}
+        //Convertendo Imagem de BGR para HSV
+        Mat imgHSV;
+        cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV);
+        string color = "none";
 
-    //Ordenando Quanto a posição X dos pontos encontrados
-    sort(bandFounded.begin(), bandFounded.end(), orderByXPos);  
+        //Encontrando os pontos centrais das cores do resistor
+        for (int i = 0; i< sixBandColors.size(); i++){
+            color = sixBandColors[i];
+            if(getXYColorPosition(color,imgHSV).posX != 99999 && getXYColorPosition(color,imgHSV).area >10000)
+                bandFounded.push_back(getXYColorPosition(color,imgHSV));
+        }
 
-    cout << "Resistor Value" << getResistorValue(bandFounded) << " " << getResistorPrecision(bandFounded) << endl;
+        cout << bandFounded.size() << endl;
+        //Ordenando Quanto a posição X dos pontos encontrados
+        sort(bandFounded.begin(), bandFounded.end(), orderByXPos);  
+
+        colorFounded found;
+        for (int i = 0; i< bandFounded.size(); i++){
+            found = bandFounded[i];
+            circle(points, Point(found.posX, found.posY), 3,  Scalar(0,255,0), 2);
+        }
+
+        imgOriginal = imgOriginal + points;
+        imshow("Original", imgOriginal); //show the original image
+        cout << "Resistor Value" << getResistorValue(bandFounded) << " " << getResistorPrecision(bandFounded) << endl;
+        if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
+        {
+            cout << "esc key is pressed by user" << endl;
+            return 0;
+        }
+    }
 
 }
